@@ -14,7 +14,7 @@ CER (character error rate) on 574 test lines from **3 manuscripts never seen dur
 | **Kraken CATMuS Medieval, fine-tuned** | 4 M | **7.2 %** | **6.5 %** | **5.0 %** | **8.5 %** |
 | Qwen2.5-VL-3B-Instruct, zero-shot | 3.8 B | 38.9 % | 33.8 % | 32.8 % | 44.9 % |
 | Qwen2.5-VL-3B + LoRA | 3.8 B | 22.1 % | 22.2 % | 17.8 % | 23.4 % |
-| Qwen2.5-VL-3B + LoRA, images ×2 | 3.8 B | *running* | | | |
+| Qwen2.5-VL-3B + LoRA, images ×2 | 3.8 B | 30.2 % | 29.9 % | 28.3 % | 31.1 % |
 
 **Main finding**: with 3,400 training lines, the fine-tuned specialised model is **three times more accurate** than the fine-tuned VLM, with about 900 times fewer parameters, and it runs on CPU.
 
@@ -28,15 +28,16 @@ CER (character error rate) on 574 test lines from **3 manuscripts never seen dur
 | Kraken fine-tuned | 7.2 % | 7.1 % | 3.7 % | 2.1 % | 1.4 % |
 | Qwen zero-shot | 38.9 % | 42.1 % | 22.6 % | 7.8 % | 8.5 % |
 | Qwen + LoRA | 22.1 % | 24.1 % | 13.5 % | 5.3 % | 3.4 % |
+| Qwen + LoRA, images ×2 | 30.2 % | 33.0 % | 18.5 % | 7.6 % | 4.1 % |
 
 ### Share of characters read correctly, by category
 
-| Category | Count | Kraken fine-tuned | Qwen + LoRA |
-|---|---|---|---|
-| Letters a-z | 12,693 | 94.4 % | 79.1 % |
-| Spaces | 2,615 | 96.9 % | 94.0 % |
-| Punctuation / digits | 200 | 88.5 % | 88.5 % |
-| Abbreviations and special signs | 204 | 52.9 % | 45.6 % |
+| Category | Count | Kraken fine-tuned | Qwen + LoRA | Qwen + LoRA, ×2 |
+|---|---|---|---|---|
+| Letters a-z | 12,693 | 94.4 % | 79.1 % | 70.6 % |
+| Spaces | 2,615 | 96.9 % | 94.0 % | 91.6 % |
+| Punctuation / digits | 200 | 88.5 % | 88.5 % | 84.5 % |
+| Abbreviations and special signs | 204 | 52.9 % | 45.6 % | 36.8 % |
 
 ### What the numbers show
 
@@ -46,7 +47,8 @@ CER (character error rate) on 574 test lines from **3 manuscripts never seen dur
 4. **Spaces are not the main source of error**: removing them does not lower the CER.
 5. **The gap between Kraken and Qwen comes from ordinary letters**, not abbreviations: 94.4 % vs 79.1 % of letters a-z read correctly. Abbreviations are hard for both models but account for only 1.3 % of characters.
 6. **Some confusions are shared by both models** and stem from the script itself: `l` ↔ `s` (the *long s* looks like an `l`), `u` ↔ `n` ↔ `m` (letters built from the same minims).
-7. **One confusion is specific to Qwen: many letters become `i`** (`a → i`, `u → i`, `r → i`, `y → i`). Hypothesis: at native resolution a letter covers roughly one image token (28 × 28 px), so the model sees vertical strokes without telling letter shapes apart. The "images ×2" experiment tests this hypothesis.
+7. **One confusion is specific to Qwen: many letters become `i`** (`a → i`, `u → i`, `r → i`, `y → i`; 254 confusions towards `i`, vs 45 for Kraken). Hypothesis tested: at native resolution a letter covers roughly one image token (28 × 28 px), so the model would see vertical strokes without telling letter shapes apart.
+8. **Upscaling images ×2 does not fix it: CER goes from 22.1 % to 30.2 %.** The prediction made before the experiment was that confusions towards `i` would drop: they rise (254 → 301), and new vowel confusions appear (`e → a`, `a → e`, `e → i`). The degradation affects every character category and 371 of 574 lines (only 122 improve): it is not driven by a few outliers. Likely explanation: interpolated upscaling adds no information and spreads each letter over blurrier tokens, which the frozen vision encoder cannot learn to read. The bottleneck is therefore **what the encoder sees**, not resolution.
 
 ## Data
 
@@ -87,6 +89,7 @@ The fine-tuned Kraken transcriptions are exported to TEI, one file per test manu
 - **Kraken training stopped at epoch 9**, while dev accuracy was still improving slightly.
 - **Lines not dewarped**: Kraken was fine-tuned on pre-cropped line images, whereas the base model was trained on lines straightened along their baseline.
 - **Qwen's vision encoder was frozen**: only the language model was adapted.
+- **The ×2 experiment is not strictly isolated**: to fit in memory, the per-GPU batch went from 2 lines to 1 (effective batch unchanged: 16 lines), and 393 training lines (11.6 %) were upscaled by less than ×2 (one-megapixel cap).
 - **Zone annotation varies across manuscripts**: paratext (ex-libris, titles) is not always distinguished from the main text in the TEI.
 
 ## Next steps

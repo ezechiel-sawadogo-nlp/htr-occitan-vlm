@@ -1,0 +1,37 @@
+{
+ "Kraken tel quel": {
+  "CER": 0.1666,
+  "CER sans espaces": 0.1719,
+  "substitutions": 0.0715,
+  "suppressions": 0.0714,
+  "insertions": 0.0236
+ },
+ "Kraken affiné": {
+  "CER": 0.0718,
+  "CER sans espaces": 0.0712,
+  "substitutions": 0.0368,
+  "suppressions": 0.0214,
+  "insertions": 0.0136
+ },
+ "Qwen tel quel": {
+  "CER": 0.3887,
+  "CER sans espaces": 0.4208,
+  "substitutions": 0.226,
+  "suppressions": 0.0778,
+  "insertions": 0.085
+ },
+ "Qwen affiné": {
+  "CER": 0.2211,
+  "CER sans espaces": 0.2414,
+  "substitutions": 0.1345,
+  "suppressions": 0.0528,
+  "insertions": 0.0338
+ },
+ "Qwen + LoRA ×2": {
+  "CER": 0.302,
+  "CER sans espaces": 0.3304,
+  "substitutions": 0.1853,
+  "suppressions": 0.0762,
+  "insertions": 0.0405
+ }
+}
