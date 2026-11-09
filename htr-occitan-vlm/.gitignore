@@ -1,0 +1,15 @@
+# Données et poids régénérés par les notebooks (trop lourds pour le dépôt)
+occitan/
+lignes_occitan/
+lignes_occitan_poly/
+kraken_data/
+kraken_occitan/
+qwen_occitan*/
+eval_*/
+*.zip
+*.ckpt
+*.safetensors
+*.mlmodel
+*.log
+.ipynb_checkpoints/
+__pycache__/
