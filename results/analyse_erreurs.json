@@ -26,5 +26,12 @@
   "substitutions": 0.1345,
   "suppressions": 0.0528,
   "insertions": 0.0338
+ },
+ "Qwen + LoRA ×2": {
+  "CER": 0.302,
+  "CER sans espaces": 0.3304,
+  "substitutions": 0.1853,
+  "suppressions": 0.0762,
+  "insertions": 0.0405
  }
 }
