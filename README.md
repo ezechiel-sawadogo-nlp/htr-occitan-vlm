@@ -14,7 +14,7 @@ CER (taux d'erreur par caractère) sur 574 lignes de test issues de **3 manuscri
 | **Kraken CATMuS Medieval, affiné** | 4 M | **7,2 %** | **6,5 %** | **5,0 %** | **8,5 %** |
 | Qwen2.5-VL-3B-Instruct, tel quel | 3,8 Md | 38,9 % | 33,8 % | 32,8 % | 44,9 % |
 | Qwen2.5-VL-3B + LoRA | 3,8 Md | 22,1 % | 22,2 % | 17,8 % | 23,4 % |
-| Qwen2.5-VL-3B + LoRA, images ×2 | 3,8 Md | *en cours* | | | |
+| Qwen2.5-VL-3B + LoRA, images ×2 | 3,8 Md | 30,2 % | 29,9 % | 28,3 % | 31,1 % |
 
 **Conclusion principale** : sur un corpus de 3 400 lignes, le modèle spécialisé affiné reste **trois fois plus précis** que le VLM affiné, avec environ 900 fois moins de paramètres, et il tourne sur CPU.
 
@@ -28,15 +28,16 @@ CER (taux d'erreur par caractère) sur 574 lignes de test issues de **3 manuscri
 | Kraken affiné | 7,2 % | 7,1 % | 3,7 % | 2,1 % | 1,4 % |
 | Qwen tel quel | 38,9 % | 42,1 % | 22,6 % | 7,8 % | 8,5 % |
 | Qwen + LoRA | 22,1 % | 24,1 % | 13,5 % | 5,3 % | 3,4 % |
+| Qwen + LoRA, images ×2 | 30,2 % | 33,0 % | 18,5 % | 7,6 % | 4,1 % |
 
 ### Part des caractères correctement lus, par catégorie
 
-| Catégorie | Effectif | Kraken affiné | Qwen + LoRA |
-|---|---|---|---|
-| Lettres a-z | 12 693 | 94,4 % | 79,1 % |
-| Espaces | 2 615 | 96,9 % | 94,0 % |
-| Ponctuation / chiffres | 200 | 88,5 % | 88,5 % |
-| Abréviations et signes spéciaux | 204 | 52,9 % | 45,6 % |
+| Catégorie | Effectif | Kraken affiné | Qwen + LoRA | Qwen + LoRA, ×2 |
+|---|---|---|---|---|
+| Lettres a-z | 12 693 | 94,4 % | 79,1 % | 70,6 % |
+| Espaces | 2 615 | 96,9 % | 94,0 % | 91,6 % |
+| Ponctuation / chiffres | 200 | 88,5 % | 88,5 % | 84,5 % |
+| Abréviations et signes spéciaux | 204 | 52,9 % | 45,6 % | 36,8 % |
 
 ### Ce que montrent ces chiffres
 
@@ -46,7 +47,8 @@ CER (taux d'erreur par caractère) sur 574 lignes de test issues de **3 manuscri
 4. **Les espaces ne sont pas la principale source d'erreur** : retirer les espaces ne fait pas baisser le CER.
 5. **L'écart entre Kraken et Qwen vient des lettres ordinaires**, pas des abréviations : 94,4 % contre 79,1 % de lettres a-z bien lues. Les abréviations sont difficiles pour les deux modèles, mais ne représentent que 1,3 % des caractères.
 6. **Certaines confusions sont communes aux deux modèles** et tiennent à l'écriture elle-même : `l` ↔ `s` (le *s long* ressemble à un `l`), `u` ↔ `n` ↔ `m` (lettres faites des mêmes jambages).
-7. **Une confusion est propre à Qwen : beaucoup de lettres deviennent `i`** (`a → i`, `u → i`, `r → i`, `y → i`). Hypothèse : à la résolution native, une lettre occupe environ un seul token d'image (28 × 28 px) ; le modèle perçoit des traits verticaux sans distinguer la forme des lettres. L'expérience « images ×2 » teste cette hypothèse.
+7. **Une confusion est propre à Qwen : beaucoup de lettres deviennent `i`** (`a → i`, `u → i`, `r → i`, `y → i` ; 254 confusions vers `i`, contre 45 pour Kraken). Hypothèse testée : à la résolution native, une lettre occupe environ un seul token d'image (28 × 28 px), et le modèle percevrait des traits verticaux sans distinguer la forme des lettres.
+8. **Agrandir les images ×2 ne résout pas le problème : le CER passe de 22,1 % à 30,2 %.** La prédiction posée avant l'expérience était que les confusions vers `i` baisseraient : elles augmentent (254 → 301), et de nouvelles confusions entre voyelles apparaissent (`e → a`, `a → e`, `e → i`). La dégradation touche toutes les catégories de caractères et 371 lignes sur 574 (122 seulement s'améliorent) : ce n'est pas l'effet de quelques lignes aberrantes. Explication probable : l'agrandissement par interpolation n'ajoute aucune information et étale chaque lettre sur des tokens plus flous, que l'encodeur visuel, gelé, ne peut pas apprendre à interpréter. Le goulot d'étranglement est donc **ce que voit l'encodeur**, pas la résolution.
 
 ## Données
 
@@ -87,6 +89,7 @@ Les transcriptions de Kraken affiné sont exportées en TEI, un fichier par manu
 - **Entraînement de Kraken arrêté à l'époque 9**, alors que la précision sur le dev progressait encore légèrement.
 - **Lignes non redressées** : Kraken a été affiné sur des images de lignes déjà découpées, alors que le modèle de départ avait été entraîné sur des lignes redressées à partir de leur ligne de base.
 - **Encodeur visuel de Qwen gelé** : seul le modèle de langue a été adapté.
+- **Expérience ×2 pas strictement isolée** : pour tenir en mémoire, les lots par GPU sont passés de 2 à 1 ligne (lot effectif inchangé : 16 lignes), et 393 lignes du train (11,6 %) ont été agrandies moins que ×2 (plafond d'un million de pixels).
 - **Annotation des zones hétérogène** selon les manuscrits : le paratexte (ex-libris, titres) n'est pas toujours distingué du texte dans la TEI.
 
 ## Pistes
