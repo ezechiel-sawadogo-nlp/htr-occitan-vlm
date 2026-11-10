@@ -15,8 +15,9 @@ CER (character error rate) on 574 test lines from **3 manuscripts never seen dur
 | Qwen2.5-VL-3B-Instruct, zero-shot | 3.8 B | 38.9 % | 33.8 % | 32.8 % | 44.9 % |
 | Qwen2.5-VL-3B + LoRA | 3.8 B | 22.1 % | 22.2 % | 17.8 % | 23.4 % |
 | Qwen2.5-VL-3B + LoRA, images ×2 | 3.8 B | 30.2 % | 29.9 % | 28.3 % | 31.1 % |
+| **Qwen2.5-VL-3B + LoRA, language + vision** | 3.8 B | **7.9 %** | 9.1 % | 5.9 % | **7.6 %** |
 
-**Main finding**: with 3,400 training lines, the fine-tuned specialised model is **three times more accurate** than the fine-tuned VLM, with about 900 times fewer parameters, and it runs on CPU.
+**Main finding**: a general-purpose VLM only matches a specialised HTR model when **its vision encoder is adapted**. With LoRA on the language model alone, Qwen stays three times less accurate than fine-tuned Kraken (22.1 % vs 7.2 %); with LoRA on the vision encoder as well, it drops to **7.9 %**. The remaining gap with Kraken (+0.7 points) is **not statistically significant** (95 % bootstrap confidence interval: [−0.4, +2.2] points), and Qwen beats Kraken on the manuscript with skewed lines (`naf-6195`). At comparable accuracy, Kraken remains about 900 times lighter and runs on CPU.
 
 ## Error analysis
 
@@ -29,15 +30,16 @@ CER (character error rate) on 574 test lines from **3 manuscripts never seen dur
 | Qwen zero-shot | 38.9 % | 42.1 % | 22.6 % | 7.8 % | 8.5 % |
 | Qwen + LoRA | 22.1 % | 24.1 % | 13.5 % | 5.3 % | 3.4 % |
 | Qwen + LoRA, images ×2 | 30.2 % | 33.0 % | 18.5 % | 7.6 % | 4.1 % |
+| Qwen + LoRA language + vision | 7.9 % | 7.9 % | 4.2 % | 2.0 % | 1.7 % |
 
 ### Share of characters read correctly, by category
 
-| Category | Count | Kraken fine-tuned | Qwen + LoRA | Qwen + LoRA, ×2 |
-|---|---|---|---|---|
-| Letters a-z | 12,693 | 94.4 % | 79.1 % | 70.6 % |
-| Spaces | 2,615 | 96.9 % | 94.0 % | 91.6 % |
-| Punctuation / digits | 200 | 88.5 % | 88.5 % | 84.5 % |
-| Abbreviations and special signs | 204 | 52.9 % | 45.6 % | 36.8 % |
+| Category | Count | Kraken fine-tuned | Qwen + LoRA | Qwen + LoRA, ×2 | Qwen + LoRA language + vision |
+|---|---|---|---|---|---|
+| Letters a-z | 12,693 | 94.4 % | 79.1 % | 70.6 % | 93.7 % |
+| Spaces | 2,615 | 96.9 % | 94.0 % | 91.6 % | 97.4 % |
+| Punctuation / digits | 200 | 88.5 % | 88.5 % | 84.5 % | 87.5 % |
+| Abbreviations and special signs | 204 | 52.9 % | 45.6 % | 36.8 % | 57.8 % |
 
 ### What the numbers show
 
@@ -49,6 +51,8 @@ CER (character error rate) on 574 test lines from **3 manuscripts never seen dur
 6. **Some confusions are shared by both models** and stem from the script itself: `l` ↔ `s` (the *long s* looks like an `l`), `u` ↔ `n` ↔ `m` (letters built from the same minims).
 7. **One confusion is specific to Qwen: many letters become `i`** (`a → i`, `u → i`, `r → i`, `y → i`; 254 confusions towards `i`, vs 45 for Kraken). Hypothesis tested: at native resolution a letter covers roughly one image token (28 × 28 px), so the model would see vertical strokes without telling letter shapes apart.
 8. **Upscaling images ×2 does not fix it: CER goes from 22.1 % to 30.2 %.** The prediction made before the experiment was that confusions towards `i` would drop: they rise (254 → 301), and new vowel confusions appear (`e → a`, `a → e`, `e → i`). The degradation affects every character category and 371 of 574 lines (only 122 improve): it is not driven by a few outliers. Likely explanation: interpolated upscaling adds no information and spreads each letter over blurrier tokens, which the frozen vision encoder cannot learn to read. The bottleneck is therefore **what the encoder sees**, not resolution.
+9. **Adapting the vision encoder confirms this diagnosis: CER drops from 22.1 % to 7.9 %**, with a single change from the reference run (LoRA added to the vision encoder blocks and to the vision-language projector; original images; same training settings). Substitutions fall from 13.5 % to 4.2 % and confusions towards `i` from 254 to 73. Qwen's remaining errors look like Kraken's (`l → s`, `n → u`, `c → t`, `n → m`): they now stem mostly from the ambiguities of the script itself.
+10. **Adapted Qwen and fine-tuned Kraken are statistically tied on the whole test set.** Paired line-level bootstrap (10,000 resamples): CER gap of +0.7 points in Kraken's favour, 95 % interval [−0.4, +2.2]; Qwen wins in 12 % of resamples. Per manuscript, Kraken is significantly better on `additional-21218` (+2.6 points, CI [+0.5, +6.1]), and Qwen better on `naf-6195` with its skewed lines (−0.9 points, CI [−2.2, +0.3], not significant). Qwen reads abbreviations (57.8 % vs 52.9 %) and spaces better, Kraken ordinary letters slightly better (94.4 % vs 93.7 %).
 
 ## Data
 
@@ -71,7 +75,7 @@ Manuscript `paris-bnf-fr-13509` is also part of CATMuS Medieval, on which the ba
 - **Line extraction**: each line is cropped from its ALTO polygon, and everything outside the polygon is masked in white.
 - **Evaluation**: corpus-level CER on the test set (total errors / total characters, with `jiwer`), after **NFD** Unicode normalisation on both sides, as used to train the CATMuS model.
 - **Kraken**: [CATMuS Medieval 1.5.0](https://doi.org/10.5281/zenodo.12743230) model (Kraken 7.1.1). Fine-tuned with alphabet extension (`--resize union`), learning rate 1e-4, batch size 16, image augmentation; best checkpoint selected on dev (epoch 9, dev accuracy 0.886).
-- **Qwen2.5-VL-3B-Instruct**: LoRA (r = 16, α = 32) on the attention and MLP layers of the **language model only** (0.79 % of parameters trained), 2 epochs, learning rate 2e-4 (cosine), effective batch of 16 lines, fp16; only the answer is learned (prompt and image tokens masked in the labels). Deterministic decoding (`do_sample=False`).
+- **Qwen2.5-VL-3B-Instruct**: LoRA (r = 16, α = 32) on the attention and MLP layers of the **language model** (0.79 % of parameters trained) and, in the final experiment, also on the **vision encoder** blocks (`attn.qkv`, `attn.proj`, MLP) and on the two linear layers of the vision-language **projector** (1.09 % of parameters trained); 2 epochs, learning rate 2e-4 (cosine), effective batch of 16 lines, fp16; only the answer is learned (prompt and image tokens masked in the labels). Deterministic decoding (`do_sample=False`).
 - **Hardware**: NVIDIA T4 GPU (Google Colab, Kaggle).
 
 ## TEI export
@@ -85,16 +89,17 @@ The fine-tuned Kraken transcriptions are exported to TEI, one file per test manu
 
 ## Limitations
 
-- **Small test set**: 574 lines and 3 manuscripts; per-manuscript CERs rest on 93 to 337 lines.
+- **Small test set**: 574 lines and 3 manuscripts; per-manuscript CERs rest on 93 to 337 lines. The bootstrap resamples lines, which are not independent within a manuscript: the intervals are probably too narrow, and 3 manuscripts are not enough to generalise to other hands.
+- **One run per configuration**: variability due to LoRA initialisation and data order is not measured.
 - **Kraken training stopped at epoch 9**, while dev accuracy was still improving slightly.
 - **Lines not dewarped**: Kraken was fine-tuned on pre-cropped line images, whereas the base model was trained on lines straightened along their baseline.
-- **Qwen's vision encoder was frozen**: only the language model was adapted.
 - **The ×2 experiment is not strictly isolated**: to fit in memory, the per-GPU batch went from 2 lines to 1 (effective batch unchanged: 16 lines), and 393 training lines (11.6 %) were upscaled by less than ×2 (one-megapixel cap).
 - **Zone annotation varies across manuscripts**: paratext (ex-libris, titles) is not always distinguished from the main text in the TEI.
 
 ## Next steps
 
-- LoRA on Qwen's vision encoder;
+- combining both models (voting, or Qwen correcting Kraken's output), since their strengths differ across manuscripts and character categories;
+- measuring variability by repeating training runs with several seeds;
 - fine-tuning Kraken directly on ALTO (dewarped lines);
 - pre-training on CATMuS Medieval (Old French, Latin) before Occitan;
 - hybrid approach: Kraken transcription corrected by a language model.

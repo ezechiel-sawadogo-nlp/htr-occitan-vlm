@@ -20,7 +20,7 @@
   "suppressions": 0.0778,
   "insertions": 0.085
  },
- "Qwen affiné": {
+ "Qwen + LoRA": {
   "CER": 0.2211,
   "CER sans espaces": 0.2414,
   "substitutions": 0.1345,
@@ -33,5 +33,12 @@
   "substitutions": 0.1853,
   "suppressions": 0.0762,
   "insertions": 0.0405
+ },
+ "Qwen + LoRA vision": {
+  "CER": 0.079,
+  "CER sans espaces": 0.0793,
+  "substitutions": 0.0417,
+  "suppressions": 0.0203,
+  "insertions": 0.0171
  }
 }
